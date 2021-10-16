@@ -30,7 +30,8 @@ class KS:
     """
     def __init__(self, L=16, N=128, dt=0.5,
                  lambda2=1.0, lambda4=1, nonlinear_coeff=1,
-                 lambda1=0, lambda3=0,
+                 lambda1=0, lambda3=0, nonlinear_coeff2=0,
+                 nonlinear_coeff3=0,
                  timestepper='rk3'):
         """Initialize the solver.
 
@@ -66,6 +67,14 @@ class KS:
             Coefficient on an additional u_xxx term in the equation.
             Zero for the standard Kuramoto-Sivashinsky equation.
 
+        nonlinear_coeff2 : float
+            Coefficient on the u^2 term in the equation.
+            Zero for the standard Kuramoto-Sivashinsky equation.
+
+        nonlinear_coeff3 : float
+            Coefficient on the u_x^2 term in the equation.
+            Zero for the standard Kuramoto-Sivashinsky equation.
+
         timestepper : str
             Which time stepping scheme to use. Options:
             * 'forward_euler': First-order Euler method.
@@ -79,6 +88,8 @@ class KS:
         # Store coefficients and initialize linear Fourier multiplier.
         self.lambda4 = lambda4
         self.nonlinear_coeff = nonlinear_coeff
+        self.nonlinear_coeff2 = 0
+        self.nonlinear_coeff3 = 0
         self.lambda1 = lambda1
         self.lambda3 = lambda3
         self.update_lin()
@@ -112,12 +123,24 @@ class KS:
         """Spectral derivative operator."""
         return self.__ik
 
+    def get_domain(self):
+        """Get the domain for plotting the solution in real space.
+        """
+
+        return np.pi*np.linspace(-self.L, self.L , self.n+1)[:-1]
+
     def nlterm(self, xspec):
         """Compute the tendency from the nonlinear term."""
         xspec_dealiased = xspec.copy()
         xspec_dealiased[(2*len(xspec))//3:] = 0
         x = np.fft.irfft(xspec_dealiased)
-        return -0.5*self.ik*np.fft.rfft(x**2) * self.nonlinear_coeff
+        res = -0.5*self.ik*np.fft.rfft(x**2) * self.nonlinear_coeff
+        if self.nonlinear_coeff2:
+            res += -self.nonlinear_coeff2 * np.fft.rfft(x**2)
+        if self.nonlinear_coeff3:
+            u_xspec = - self.ik * xpec_dealiased
+            res += -self.nonlinear_coeff3 * np.fft.rfft(np.fft.irfft(u_xspec)**2)
+        return res
 
     def update_lin(self):
         """Set Fourier multipliers for the linear terms."""
