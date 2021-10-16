@@ -13,11 +13,33 @@ from tqdm import tqdm
 import multiprocessing as mp
 
 from KS_order import KS, KSAssim
+from scipy.interpolate import interp1d
 
 def fourier_projector(spec, modes=21):
     mod_spec = spec.copy()
     mod_spec[modes:] = 0
     return np.fft.irfft(mod_spec)
+
+def pointwise_projector(spec, interp_points, domain, interpolation='cubic'):
+    """Project the data based on point-wise observations.
+
+    Parameters
+    ----------
+
+    spec : np.array
+        The true state in Fourier space
+
+    interp_points : np.array
+        The points at which we observe the solution.
+
+    domain : np.array
+        The problem domain (important for some interpolation methods)
+    """
+
+    x = np.fft.irfft(spec)
+    observations = interp1d(domain, x, kind='linear')(interp_points)
+    interpolator = interp1d(interp_points, observations, kind=interpolation, fill_value='extrapolate')
+    return interpolator(domain)
 
 def l2_norm(x):
     return (np.sum(np.abs(x)**2)) ** .5
@@ -25,17 +47,30 @@ def l2_norm(x):
 # This needs to not be a class method so it can be used with the multiprocessing library
 def run_simulation(initial_guess={'lambda2': 2}, mu=1, dt=.01,
     alpha=None, max_t=10, modes=21, alpha_scale=None, mu_scale=None,
-    order=2, timestepper='rk3', lambda2=1, N=512, start_xspec=None, start_x=None):
+    order=2, timestepper='rk3', lambda2=1, N=512, start_xspec=None,
+    start_x=None, pointwise_interpolation=None, **kwargs):
         # Initialize true solution from common starting point
-        true = KS(dt=dt, N=N, lambda2=lambda2, timestepper=timestepper)
+        true = KS(dt=dt, N=N, lambda2=lambda2, timestepper=timestepper, **kwargs)
         if start_x is not None and start_xspec is not None:
             true.xspec = start_xspec.copy()
             true.x = start_x.copy()
 
         estimate_params = list(initial_guess.keys())
-        projector = partial(fourier_projector, modes=modes)
+
+        if pointwise_interpolation is not None:
+            domain = true.get_domain()
+            num_interpolation_points = modes
+            # Get num_interpolation_points points spaced roughly evenly across the grid
+            #spacing = N // num_interpolation_points
+            #inds = np.arange(0, N, spacing)[:num_interpolation_points]
+            interp_points = np.linspace(domain[0], domain[-1], num_interpolation_points)
+            projector = partial(pointwise_projector, interp_points=interp_points, domain=domain,
+                interpolation = pointwise_interpolation)
+        else:
+            projector = partial(fourier_projector, modes=modes)
+        kwargs = {k:v for k,v in kwargs.items() if k not in initial_guess}
         assimilator = KSAssim(projector, N=N, mu=mu, alpha=alpha,
-            dt=dt, timestepper=timestepper, order=order, estimate_params=estimate_params, **initial_guess)
+            dt=dt, timestepper=timestepper, order=order, estimate_params=estimate_params, **initial_guess, **kwargs)
         max_n = int(max_t/dt)
         interp_errors = []
         true_errors = []
@@ -93,7 +128,16 @@ class BatchSimulator(object):
         os.makedirs(outdir)
         print("Initialized the chaotic initial state.")
 
-    def run_batch(self, base_params, ranges={}, grid=True, n_jobs=None):
+
+    def _expand_scales(self, input_params):
+          if 'dt' in input_params:
+              if 'mu_scale' in input_params:
+                  input_params['mu'] = input_params['mu_scale'] / input_params['dt']
+
+              if 'alpha_scale' in input_params:
+                  input_params['alpha'] = input_params['alpha_scale'] / input_params['dt']
+
+    def get_param_list(self, base_params, ranges={}, grid=True):
         if not len(ranges):
             raise RuntimeWarning("No parameter ranges specified - nothing to do!")
             return
@@ -105,21 +149,29 @@ class BatchSimulator(object):
         if 'alpha_scale' in base_params and 'alpha' in ranges:
             raise ValueError("Cannot both set alpha_scale and vary alpha!")
 
-        for choice in itertools.product(*[ranges[p] for p in params_to_vary]):
-            input_params = deepcopy(base_params)
-            for c, p in zip(choice, params_to_vary):
-                input_params[p] = c
+        if grid == True:
+            for choice in itertools.product(*[ranges[p] for p in params_to_vary]):
+                input_params = deepcopy(base_params)
+                for c, p in zip(choice, params_to_vary):
+                    input_params[p] = c
 
-            if 'dt' in input_params:
-                if 'mu_scale' in input_params:
-                    input_params['mu'] = input_params['mu_scale'] / input_params['dt']
+                self._expand_scales(input_params)
+                param_list.append(input_params)
+        else:
+            # vary one parameter at a time - no grid search
+            for p, param_vals in ranges.items():
+                for val in param_vals:
+                    input_params = deepcopy(base_params)
+                    input_params[p] = val
+                    self._expand_scales(input_params)
+                    param_list.append(input_params)
 
-                if 'alpha_scale' in input_params:
-                    input_params['alpha'] = input_params['alpha_scale'] / input_params['dt']
+        return param_list
 
-            param_list.append(input_params)
+    def run_batch(self, base_params, ranges={}, grid=True, n_jobs=None):
+        param_list = self.get_param_list(base_params, ranges=ranges, grid=grid)
         print(param_list)
-        self.run_simulations_low(param_list)
+        self.run_simulations_low(param_list, n_jobs=n_jobs)
 
     def run_simulations_low(self, param_list, n_jobs=None):
         index = []

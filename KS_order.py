@@ -30,7 +30,8 @@ class KS:
     """
     def __init__(self, L=16, N=128, dt=0.5,
                  lambda2=1.0, lambda4=1, nonlinear_coeff=1,
-                 lambda1=0, lambda3=0,
+                 lambda1=0, lambda3=0, nonlinear_coeff2=0,
+                 nonlinear_coeff3=0,
                  timestepper='rk3'):
         """Initialize the solver.
 
@@ -66,6 +67,14 @@ class KS:
             Coefficient on an additional u_xxx term in the equation.
             Zero for the standard Kuramoto-Sivashinsky equation.
 
+        nonlinear_coeff2 : float
+            Coefficient on the u^2 term in the equation.
+            Zero for the standard Kuramoto-Sivashinsky equation.
+
+        nonlinear_coeff3 : float
+            Coefficient on the u_x^2 term in the equation.
+            Zero for the standard Kuramoto-Sivashinsky equation.
+
         timestepper : str
             Which time stepping scheme to use. Options:
             * 'forward_euler': First-order Euler method.
@@ -79,6 +88,8 @@ class KS:
         # Store coefficients and initialize linear Fourier multiplier.
         self.lambda4 = lambda4
         self.nonlinear_coeff = nonlinear_coeff
+        self.nonlinear_coeff2 = nonlinear_coeff2
+        self.nonlinear_coeff3 = nonlinear_coeff3
         self.lambda1 = lambda1
         self.lambda3 = lambda3
         self.update_lin()
@@ -112,12 +123,34 @@ class KS:
         """Spectral derivative operator."""
         return self.__ik
 
-    def nlterm(self, xspec):
+    def get_domain(self):
+        """Get the domain for plotting the solution in real space.
+        """
+
+        return np.pi*np.linspace(-self.L, self.L , self.n+1)[:-1]
+
+    def nlterm(self, xspec, return_specs=False):
         """Compute the tendency from the nonlinear term."""
         xspec_dealiased = xspec.copy()
         xspec_dealiased[(2*len(xspec))//3:] = 0
         x = np.fft.irfft(xspec_dealiased)
-        return -0.5*self.ik*np.fft.rfft(x**2) * self.nonlinear_coeff
+        res = -0.5*self.ik*np.fft.rfft(x**2) * self.nonlinear_coeff
+        # We need to flip the sign for the specs
+        # Since the parameter estimation needs a different sign than the timestepping
+        specs = {}
+        specs['nonlinear_coeff'] = -res.copy()
+        if self.nonlinear_coeff2:
+            specs['nonlinear_coeff2'] = self.nonlinear_coeff2 * np.fft.rfft(x*np.fft.irfft(self.ik**2*xspec_dealiased))
+            res -= specs['nonlinear_coeff2']
+        if self.nonlinear_coeff3:
+            u_xspec = - self.ik * xspec_dealiased
+            specs['nonlinear_coeff3'] = self.nonlinear_coeff3 * np.fft.rfft(np.fft.irfft(u_xspec)**2)
+            res -= specs['nonlinear_coeff3']
+
+        if return_specs:
+            return res, specs
+        else:
+            return res
 
     def update_lin(self):
         """Set Fourier multipliers for the linear terms."""
@@ -262,10 +295,10 @@ class KSAssim(KS):
             #u_t = .5*(3.*self.target_spec - 4.*self.last_target_spec + self.backstep_target_spec) / self.dt
             u_t = sum([coeff*spec for coeff, spec in zip(self.finite_difference_coeffs, self.target_history)]) / self.dt
     #            u_t = (11*self.target_spec/6 - 3*self.last_target_spec + 1.5*self.backstep_target_spec - self.back2step_target_spec/3)/self.dt
-            nl_spec = -self.nlterm(self.xspec)
+            _ , nl_specs = self.nlterm(self.xspec, return_specs=True)
             G_specs = {p: self.param_coeffs[p]*self.xspec for p in self.param_coeffs}
-            G_specs['nonlinear_coeff'] = nl_spec
-            rhs = np.zeros_like(nl_spec)
+            G_specs.update(nl_specs)
+            rhs = np.zeros_like(nl_specs['nonlinear_coeff'])
 
             for p in G_specs:
                 if p not in self.estimate_params:
