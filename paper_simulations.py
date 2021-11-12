@@ -58,21 +58,34 @@ def high_spatial_res(dirname):
 def explore_alpha(dirname):
     sim = BatchSimulator(dirname, N=512, lambda2=1, overwrite=True)
     base_params = {"alpha": 1, "mu_scale": 1.8, "order":3 , "max_t": 45, "dt": 1e-3, "modes": 21, "timestepper":"rk4"}
-    sim.run_batch(base_params, ranges={ "initial_guess": [{"lambda2": 2}, {"lambda2": 2, "lambda4":2, "nonlinear_coeff":2}], "alpha": [1, 100, None]})
+    sim.run_batch(base_params, ranges={ "initial_guess": [{"lambda2": 2}, {"lambda2": 2, "lambda4":2, "nonlinear_coeff":2}], "alpha": [.5, 1, 10, 100, None]})
 
 @option
 def mu_alpha_convergence(dirname):
-    """Do a grid search over mu_scale and alpha.
-
-    This will give an idea of how the convergence rate varies with mu and alpha
-    (for a single parameter).
+    """Vary mu_scale and alpha - and see how the convergence rate changes.
     """
 
     sim = BatchSimulator(dirname, N=512, lambda2=1, overwrite=True)
+    # Run out a little longer - since we care about the convergence rates and final errors.
     base_params = {"alpha": 1, "mu_scale": 1.8, "order":3 , "max_t": 60, "dt": 1e-3, "modes": 21,
         "timestepper":"rk4", "initial_guess": {"lambda2": 2}}
+    # We don't need to do a grid search
     sim.run_batch(base_params, ranges={"alpha": [.1, .5, 1, 5, 10, 50, 100],
-        "mu_scale": [.01, .05, .1, .5, 1, 1.4, 1.8]})
+        "mu_scale": [5e-4,.001,.005,.01, .05, .1, .5, 1, 1.4, 1.8]}, grid=False)
+
+@option
+def multiparam_mu_alpha_convergence(dirname):
+    """Vary mu_scale and alpha - and see how the convergence rate changes.
+    """
+
+    sim = BatchSimulator(dirname, N=512, lambda2=1, overwrite=True)
+    # Run out a little longer - since we care about the convergence rates and final errors.
+    base_params = {"alpha": 1, "mu_scale": 1.8, "order":3 , "max_t": 60, "dt": 1e-3, "modes": 21,
+        "timestepper":"rk4", "initial_guess": {"lambda2": 2, "lambda4":2, "nonlinear_coeff":2}}
+    # We don't need to do a grid search
+    sim.run_batch(base_params, ranges={"alpha": [.1, .5, 1, 5, 10, 50, 100],
+        "mu_scale": [5e-4,.001,.005,.01, .05, .1, .5, 1, 1.4, 1.8]}, grid=False)
+
 
 if __name__ == "__main__":
     func_names = list(func_dict.keys())

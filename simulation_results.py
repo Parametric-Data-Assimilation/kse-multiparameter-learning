@@ -34,6 +34,22 @@ class Result:
             res[k] = np.mean(self.arrays[k][-int(1./self.params["dt"]):])
         return res
 
+    def determine_convergence_rate(self):
+        """Get the convergence rate 
+        """
+
+        true_errs = self.arrays["true_errors"]
+        steps_per_second = int(1./self.params["dt"])
+        final_err = self.final_errors()["true_errors"]
+        convergence_mask = true_errs < final_err
+        try:
+            steps_to_convergence = np.where(convergence_mask)[0][0]
+        except IndexError: return np.nan
+        seconds_to_convergence = steps_to_convergence/steps_per_second
+        initial_err = true_errs[0]
+        exp_decay_rate = (np.log(final_err) - np.log(initial_err)) / seconds_to_convergence
+        return -exp_decay_rate
+
     def plot(self, ax=None, save_file=None, params_only=False, **kwargs):
         """Plot the result against time.
 
@@ -92,6 +108,7 @@ class SimulationResults():
             for k, v in errs.items():
                 rec[k+"_error" if "error" not in k else k.replace("errors", "error")] = v
 
+            rec["convergence_rate"] = r.determine_convergence_rate()
             arr.append(rec)
         return pd.DataFrame(arr)
 

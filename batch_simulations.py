@@ -126,7 +126,16 @@ class BatchSimulator(object):
         os.makedirs(outdir)
         print("Initialized the chaotic initial state.")
 
-    def run_batch(self, base_params, ranges={}, grid=True, n_jobs=None):
+
+    def _expand_scales(self, input_params):
+          if 'dt' in input_params:
+              if 'mu_scale' in input_params:
+                  input_params['mu'] = input_params['mu_scale'] / input_params['dt']
+
+              if 'alpha_scale' in input_params:
+                  input_params['alpha'] = input_params['alpha_scale'] / input_params['dt']
+
+    def get_param_list(self, base_params, ranges={}, grid=True):
         if not len(ranges):
             raise RuntimeWarning("No parameter ranges specified - nothing to do!")
             return
@@ -138,21 +147,29 @@ class BatchSimulator(object):
         if 'alpha_scale' in base_params and 'alpha' in ranges:
             raise ValueError("Cannot both set alpha_scale and vary alpha!")
 
-        for choice in itertools.product(*[ranges[p] for p in params_to_vary]):
-            input_params = deepcopy(base_params)
-            for c, p in zip(choice, params_to_vary):
-                input_params[p] = c
+        if grid == True:
+            for choice in itertools.product(*[ranges[p] for p in params_to_vary]):
+                input_params = deepcopy(base_params)
+                for c, p in zip(choice, params_to_vary):
+                    input_params[p] = c
 
-            if 'dt' in input_params:
-                if 'mu_scale' in input_params:
-                    input_params['mu'] = input_params['mu_scale'] / input_params['dt']
+                self._expand_scales(input_params)
+                param_list.append(input_params)
+        else:
+            # vary one parameter at a time - no grid search
+            for p, param_vals in ranges.items():
+                for val in param_vals:
+                    input_params = deepcopy(base_params)
+                    input_params[p] = val
+                    self._expand_scales(input_params)
+                    param_list.append(input_params)
 
-                if 'alpha_scale' in input_params:
-                    input_params['alpha'] = input_params['alpha_scale'] / input_params['dt']
+        return param_list
 
-            param_list.append(input_params)
+    def run_batch(self, base_params, ranges={}, grid=True, n_jobs=None):
+        param_list = self.get_param_list(base_params, ranges=ranges, grid=grid)
         print(param_list)
-        self.run_simulations_low(param_list)
+        self.run_simulations_low(param_list, n_jobs=n_jobs)
 
     def run_simulations_low(self, param_list, n_jobs=None):
         index = []

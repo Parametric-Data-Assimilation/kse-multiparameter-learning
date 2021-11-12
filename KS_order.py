@@ -88,8 +88,8 @@ class KS:
         # Store coefficients and initialize linear Fourier multiplier.
         self.lambda4 = lambda4
         self.nonlinear_coeff = nonlinear_coeff
-        self.nonlinear_coeff2 = 0
-        self.nonlinear_coeff3 = 0
+        self.nonlinear_coeff2 = nonlinear_coeff2
+        self.nonlinear_coeff3 = nonlinear_coeff3
         self.lambda1 = lambda1
         self.lambda3 = lambda3
         self.update_lin()
@@ -129,18 +129,28 @@ class KS:
 
         return np.pi*np.linspace(-self.L, self.L , self.n+1)[:-1]
 
-    def nlterm(self, xspec):
+    def nlterm(self, xspec, return_specs=False):
         """Compute the tendency from the nonlinear term."""
         xspec_dealiased = xspec.copy()
         xspec_dealiased[(2*len(xspec))//3:] = 0
         x = np.fft.irfft(xspec_dealiased)
         res = -0.5*self.ik*np.fft.rfft(x**2) * self.nonlinear_coeff
+        # We need to flip the sign for the specs
+        # Since the parameter estimation needs a different sign than the timestepping
+        specs = {}
+        specs['nonlinear_coeff'] = -res.copy()
         if self.nonlinear_coeff2:
-            res += -self.nonlinear_coeff2 * np.fft.rfft(x**2)
+            specs['nonlinear_coeff2'] = self.nonlinear_coeff2 * np.fft.rfft(x**2)
+            res -= specs['nonlinear_coeff2']
         if self.nonlinear_coeff3:
-            u_xspec = - self.ik * xpec_dealiased
-            res += -self.nonlinear_coeff3 * np.fft.rfft(np.fft.irfft(u_xspec)**2)
-        return res
+            u_xspec = - self.ik * xspec_dealiased
+            specs['nonlinear_coeff3'] = self.nonlinear_coeff3 * np.fft.rfft(np.fft.irfft(u_xspec)**2)
+            res -= specs['nonlinear_coeff3']
+
+        if return_specs:
+            return res, specs
+        else:
+            return res
 
     def update_lin(self):
         """Set Fourier multipliers for the linear terms."""
@@ -285,10 +295,10 @@ class KSAssim(KS):
             #u_t = .5*(3.*self.target_spec - 4.*self.last_target_spec + self.backstep_target_spec) / self.dt
             u_t = sum([coeff*spec for coeff, spec in zip(self.finite_difference_coeffs, self.target_history)]) / self.dt
     #            u_t = (11*self.target_spec/6 - 3*self.last_target_spec + 1.5*self.backstep_target_spec - self.back2step_target_spec/3)/self.dt
-            nl_spec = -self.nlterm(self.xspec)
+            _ , nl_specs = self.nlterm(self.xspec, return_specs=True)
             G_specs = {p: self.param_coeffs[p]*self.xspec for p in self.param_coeffs}
-            G_specs['nonlinear_coeff'] = nl_spec
-            rhs = np.zeros_like(nl_spec)
+            G_specs.update(nl_specs)
+            rhs = np.zeros_like(nl_specs['nonlinear_coeff'])
 
             for p in G_specs:
                 if p not in self.estimate_params:
