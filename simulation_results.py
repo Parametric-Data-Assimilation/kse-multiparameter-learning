@@ -92,6 +92,9 @@ class SimulationResults():
             ark = np.load(fname)
             self.results.append(Result(rec["params"], ark))
 
+    def __getitem__(self, ind):
+        return self.results[ind]
+
     def plot_all(self):
         """Plot each of the result sets in different figures."""
         for r in self.results:

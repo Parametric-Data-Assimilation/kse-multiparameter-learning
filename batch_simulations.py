@@ -20,7 +20,7 @@ def fourier_projector(spec, modes=21):
     mod_spec[modes:] = 0
     return np.fft.irfft(mod_spec)
 
-def pointwise_projector(spec, inds, domain, interpolation='cubic'):
+def pointwise_projector(spec, interp_points, domain, interpolation='cubic'):
     """Project the data based on point-wise observations.
 
     Parameters
@@ -29,15 +29,16 @@ def pointwise_projector(spec, inds, domain, interpolation='cubic'):
     spec : np.array
         The true state in Fourier space
 
-    inds : np.array
-        The indices to use for interpolation.
+    interp_points : np.array
+        The points at which we observe the solution.
 
     domain : np.array
         The problem domain (important for some interpolation methods)
     """
 
     x = np.fft.irfft(spec)
-    interpolator = interp1d(domain[inds], x[inds], kind=interpolation, fill_value='extrapolate')
+    observations = interp1d(domain, x, kind='linear')(interp_points)
+    interpolator = interp1d(interp_points, observations, kind=interpolation, fill_value='extrapolate')
     return interpolator(domain)
 
 def l2_norm(x):
@@ -47,9 +48,9 @@ def l2_norm(x):
 def run_simulation(initial_guess={'lambda2': 2}, mu=1, dt=.01,
     alpha=None, max_t=10, modes=21, alpha_scale=None, mu_scale=None,
     order=2, timestepper='rk3', lambda2=1, N=512, start_xspec=None,
-    start_x=None, pointwise_interpolation=None, num_interpolation_points=None):
+    start_x=None, pointwise_interpolation=None, **kwargs):
         # Initialize true solution from common starting point
-        true = KS(dt=dt, N=N, lambda2=lambda2, timestepper=timestepper)
+        true = KS(dt=dt, N=N, lambda2=lambda2, timestepper=timestepper, **kwargs)
         if start_x is not None and start_xspec is not None:
             true.xspec = start_xspec.copy()
             true.x = start_x.copy()
@@ -58,17 +59,18 @@ def run_simulation(initial_guess={'lambda2': 2}, mu=1, dt=.01,
 
         if pointwise_interpolation is not None:
             domain = true.get_domain()
-            if num_interpolation_points is None:
-                raise ValueError("Must specify num_interpolation_points when pointwise_interpolation is set!")
+            num_interpolation_points = modes
             # Get num_interpolation_points points spaced roughly evenly across the grid
-            spacing = N // num_interpolation_points
-            inds = np.arange(0, N, spacing)[:num_interpolation_points]
-            projector = partial(pointwise_projector, inds=inds, domain=domain,
+            #spacing = N // num_interpolation_points
+            #inds = np.arange(0, N, spacing)[:num_interpolation_points]
+            interp_points = np.linspace(domain[0], domain[-1], num_interpolation_points)
+            projector = partial(pointwise_projector, interp_points=interp_points, domain=domain,
                 interpolation = pointwise_interpolation)
         else:
             projector = partial(fourier_projector, modes=modes)
+        kwargs = {k:v for k,v in kwargs.items() if k not in initial_guess}
         assimilator = KSAssim(projector, N=N, mu=mu, alpha=alpha,
-            dt=dt, timestepper=timestepper, order=order, estimate_params=estimate_params, **initial_guess)
+            dt=dt, timestepper=timestepper, order=order, estimate_params=estimate_params, **initial_guess, **kwargs)
         max_n = int(max_t/dt)
         interp_errors = []
         true_errors = []

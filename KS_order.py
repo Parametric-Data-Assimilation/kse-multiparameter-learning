@@ -140,7 +140,7 @@ class KS:
         specs = {}
         specs['nonlinear_coeff'] = -res.copy()
         if self.nonlinear_coeff2:
-            specs['nonlinear_coeff2'] = self.nonlinear_coeff2 * np.fft.rfft(x**2)
+            specs['nonlinear_coeff2'] = self.nonlinear_coeff2 * np.fft.rfft(x*np.fft.irfft(self.ik**2*xspec_dealiased))
             res -= specs['nonlinear_coeff2']
         if self.nonlinear_coeff3:
             u_xspec = - self.ik * xspec_dealiased
