@@ -138,9 +138,7 @@ def finitedifference_order():
     df = sr.get_summary()
     data = df.groupby(["dt","order"])["lambda2_error"].sum().unstack()
     dt = data.index.values
-    logdt = np.log10(dt),
-    data.to_csv("fd_data_temp.csv")
-    print(data)
+    logdt = np.log10(dt)
     print("Estimated Orders of Accuracy:")
     for order, mark in zip(data.columns, "osd"):
         pts = data[order].values
