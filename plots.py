@@ -1,9 +1,10 @@
 # plots.py
 """Generate all Figures used in the paper."""
+import numpy as np
+import scipy.stats as stats
 import matplotlib.pyplot as plt
 
 from simulation_results import SimulationResults
-import numpy as np
 
 
 _STYLES = ("-", "--", "-.", ":", "-", "--", "-.", ":", "-.")
@@ -137,24 +138,24 @@ def finitedifference_order():
     df = sr.get_summary()
     data = df.groupby(["dt","order"])["lambda2_error"].sum().unstack()
     dt = data.index.values
+    logdt = np.log10(dt),
+    data.to_csv("fd_data_temp.csv")
+    print(data)
     print("Estimated Orders of Accuracy:")
     for order, mark in zip(data.columns, "osd"):
-        estimated_order = np.polyfit(np.log(dt)[order-1:],
-                                     np.log(data[order].values[order-1:]),
-                                     1)[0]
+        pts = data[order].values
+        logdata = np.log10(pts[order-1:])
+        estimated_order = stats.linregress(logdt[order-1:], logdata).slope
         print(order, estimated_order)
-        ax.loglog(dt, data[order].values,
-                  ls='-', lw=1, marker=mark, ms=8, mew=0,
-                  label=f"Order {order:d}")
+        ax.loglog(dt, pts, ls='-', lw=1, marker=mark, ms=8, mew=0)
 
     # Set labels and titles.
     ax.set_xlabel(r"Time step $\delta t$")
-    ax.set_ylabel(r"$|\lambda(t_f) - \widehat{\lambda}(t_f)|$")
+    ax.set_ylabel(r"$|\lambda - \widehat{\lambda}(t_f)|$")
     ax.set_yticks([1e-12, 1e-9, 1e-6, 1e-3])
     ax.set_yticks([1e-11, 1e-10, 1e-8, 1e-7, 1e-5, 1e-4], minor=True)
     ax.set_yticklabels([], minor=True)
     ax.set_ylim(1e-13, 1e-2)
-    ax.set_xlim(ax.get_xlim()[::-1])  # Reverse x axis.
     ax.grid(True, which="major", axis="y", ls='--', lw=.25, color="gray")
 
     # Legend to the side of the plot.
