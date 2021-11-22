@@ -26,9 +26,9 @@ def convergence_singleparam():
     """Figure 1: Convergence in time for single-parameter estimation
     with various choices for α.
 
-    Requires the folder data/explore_alpha/.
+    Requires the folder data/convergence_singleparam/.
     """
-    sr = SimulationResults("data/explore_alpha")
+    sr = SimulationResults("data/convergence_singleparam")
 
     # Plot results.
     fig, axes = plt.subplots(2, 2, sharex=True, sharey=True, figsize=(12,7))
@@ -125,12 +125,12 @@ def mu_alpha_convergence():
                 dpi=300, bbox_inches="tight")
 
 
-def finite_difference_order():
-    """Figure 2: Convergence against time step for various FD schemes.
+def finitedifference_order():
+    """Figure 3: Convergence against time step for various FD schemes.
 
-    Requires the folder data/order_diffusion1/.
+    Requires the folder data/finitedifference_order/.
     """
-    sr = SimulationResults("data/order_diffusion1")
+    sr = SimulationResults("data/finitedifference_order")
 
     # Extract and plot results.
     fig, ax = plt.subplots(1, 1, figsize=(9,3))
@@ -168,7 +168,7 @@ def finite_difference_order():
 
 
 def _configure_convergence_plot(ax, indices, xmax=50, legend=True):
-    """Common settings for Figures 3, 4, and 5."""
+    """Common settings for convergence Figures."""
     ax.set_xlabel(r"Time $t$")
     ax.set_xlim(right=xmax)
     ax.set_ylabel("Absolute error")
@@ -222,9 +222,9 @@ def _texlabel(lbl):
 def convergence_multiparam():
     """Figure 4: Convergence in time for multi-parameter estimation.
 
-    Requires the folder data/sample_multiparam/.
+    Requires the folder data/convergence_multiparam/.
     """
-    sr = SimulationResults("data/sample_multiparam")
+    sr = SimulationResults("data/convergence_multiparam")
     fig, [ax1, ax2] = plt.subplots(1, 2, figsize=(12,4.5), sharey=True)
 
     ax1 = sr.results[0].plot(ax1, params_only=True)
@@ -248,9 +248,9 @@ def convergence_multiparam():
 def convergence_nonlinearparam():
     """Figures 5: Convergence in time for esimating the nonlinear parameter.
 
-    Requires the folder data/sample_multiparam/.
+    Requires the folder data/convergence_multiparam/.
     """
-    sr = SimulationResults("data/sample_multiparam")
+    sr = SimulationResults("data/convergence_multiparam")
 
     ax = sr.results[2].plot(figsize=(12,3), params_only=False)
     _configure_convergence_plot(ax, [5])
@@ -266,7 +266,7 @@ def main():
     init_plt_settings()
     convergence_singleparam()
     mu_alpha_convergence()
-    finite_difference_order()
+    finitedifference_order()
     convergence_multiparam()
     convergence_nonlinearparam()
 
