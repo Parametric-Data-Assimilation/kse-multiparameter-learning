@@ -166,6 +166,72 @@ def finitedifference_order():
     fig.savefig("figures/finitediff_order.pdf", dpi=300, bbox_inches="tight")
 
 
+def convergence_interpolator():
+    """Figure 4: Convergence in time for single-parameter estimation
+    with different number of Fourier modes or pointwise observations.
+
+    Requires the folders data/interpolator_scan and
+    data/interpolator_scan_critical_range.
+    """
+    sr1 = SimulationResults("data/interpolator_scan")
+    sr2 = SimulationResults("data/interpolator_scan_critical_range")
+
+    # Plot results.
+    fig, axes = plt.subplots(2, 2, sharex=True, sharey=True, figsize=(12,7))
+
+    sr2.results[67].plot(ax=axes[0,0])
+    axes[0,0].set_title("Fourier projection, 18 modes")
+
+    sr1.results[9].plot(ax=axes[0,1])
+    axes[0,1].set_title("Fourier projection, 21 modes")
+
+    sr2.results[28].plot(ax=axes[1,0])
+    axes[1,0].set_title("Cubic interpolation, 40 points")
+
+    sr2.results[55].plot(ax=axes[1,1])
+    axes[1,1].set_title("Cubic interpolation, 46 points")
+
+    # Format axes.
+    for ax in axes.flat:
+        ax.set_yticks([1e-13, 1e-9, 1e-5, 1e-1])
+        ax.set_yticks([1e-14,
+                       1e-12, 1e-11, 1e-10,
+                       1e-8, 1e-7, 1e-6,
+                       1e-4, 1e-3, 1e-2,
+                       1e0, 1e1],
+                      minor=True)
+        ax.set_yticklabels([], minor=True)
+        ax.grid(True, which="major", axis="y", ls='--', lw=.25, color="gray")
+        ax.set_ylim([1e-15, 1e2])
+        ax.set_xlim(right=50)
+    for ax in axes[-1,:]:
+        ax.set_xlabel(r"Time $t$")
+    for ax in axes[:,0]:
+        ax.set_ylabel("Absolute error")
+
+    for ax in axes.flat:
+        for line, i in zip(ax.lines, [1, 6, 9]):
+            line.set_color(f"C{i-1:d}")
+            line.set_linewidth(1)
+            line.set_linestyle(_STYLES[i-1])
+
+    # Legend below the plots.
+    fig.subplots_adjust(bottom=.2, wspace=.05)
+    labels = [
+        r"$|\lambda - \widehat{\lambda}(t)|$",
+        r"$||I_h(u(\cdot,t)) - I_h(v(\cdot,t))||$",
+        r"$||u(\cdot,t) - v(\cdot,t)||$"
+    ]
+    leg = axes[0,0].legend(labels, loc="lower center", ncol=3,
+                           bbox_to_anchor=(.5,0),
+                           bbox_transform=fig.transFigure)
+    for line in leg.get_lines():
+        line.set_linewidth(4)
+
+    fig.savefig("figures/convergence_interpolator.pdf",
+                dpi=300, bbox_inches="tight")
+
+
 def _configure_convergence_plot(ax, indices, xmax=50, legend=True):
     """Common settings for convergence Figures."""
     ax.set_xlabel(r"Time $t$")
@@ -219,7 +285,7 @@ def _texlabel(lbl):
 
 
 def convergence_multiparam():
-    """Figure 4: Convergence in time for multi-parameter estimation.
+    """Figure 5: Convergence in time for multi-parameter estimation.
 
     Requires the folder data/convergence_multiparam/.
     """
@@ -245,7 +311,7 @@ def convergence_multiparam():
 
 
 def convergence_nonlinearparam():
-    """Figures 5: Convergence in time for esimating the nonlinear parameter.
+    """Figures 6: Convergence in time for esimating the nonlinear parameter.
 
     Requires the folder data/convergence_multiparam/.
     """
@@ -266,6 +332,7 @@ def main():
     convergence_singleparam()
     mu_alpha_convergence()
     finitedifference_order()
+    convergence_interpolator()
     convergence_multiparam()
     convergence_nonlinearparam()
 

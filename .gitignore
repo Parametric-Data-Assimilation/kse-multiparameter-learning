@@ -15,6 +15,7 @@ figures/
 *.h5
 *.npy
 *.npz
+*.json
 *.zip
 *.tar
 *.tar.gz
