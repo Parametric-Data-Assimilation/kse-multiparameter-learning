@@ -42,6 +42,8 @@ def _convergence_single(results):
         ax.set_yticklabels([], minor=True)
         ax.grid(True, which="major", axis="y", ls='--', lw=.25, color="gray")
         ax.set_ylim([1e-15, 1e2])
+        ax.set_xticks([0, 10, 20, 30, 40, 50])
+        ax.set_xlim(0, 55)
     for ax in axes[-1,:]:
         ax.set_xlabel(r"Time $t$")
     for ax in axes[:,0]:
@@ -103,22 +105,24 @@ def mu_alpha_rates():
     mu_convergence = summary.iloc[7:]
 
     fig, axes = plt.subplots(1, 2, sharey=True, figsize=(12,3))
-    axes[0].axvline(mu_convergence["alpha"].iloc[0], color="C1", lw=.5)
+    axes[0].axvline(mu_convergence["alpha"].iloc[0], color="C1",
+                    lw=1, ls=":")
     axes[0].semilogx(alpha_convergence["alpha"],
                      alpha_convergence["convergence_rate"],
-                     "C0.-", lw=1, ms=8, mew=0)
+                     "C0.--", lw=1.5, ms=12, mew=0)
     axes[0].text(mu_convergence["alpha"].iloc[0]*1.1, .25, r"$\alpha = 1$",
-                 fontsize="large", color="C1", va="center", ha="left")
+                 fontsize="x-large", color="C1", va="center", ha="left")
     # axes[0].axhline(alpha_convergence["convergence_rate"].iloc[2],
     #                 color="k", lw=.5)
 
-    axes[1].axvline(alpha_convergence["mu"].iloc[0], color="C0", lw=.5)
+    axes[1].axvline(alpha_convergence["mu"].iloc[0], color="C0",
+                    lw=1, ls="--")
     axes[1].semilogx(mu_convergence["mu"],
                      mu_convergence["convergence_rate"],
-                     "C1.-", lw=1, ms=8, mew=0)
+                     "C1.:", lw=1.5, ms=12, mew=0)
     axes[1].text(alpha_convergence["mu"].iloc[0]*.9, .25,
                  r"$\mu = 1.8/\delta t$",
-                 fontsize="large", color="C0", va="center", ha="right")
+                 fontsize="x-large", color="C0", va="center", ha="right")
     # axes[1].axhline(mu_convergence["convergence_rate"].iloc[-1],
     #                 color="k", lw=.5)
 
@@ -139,17 +143,10 @@ def convergence_interpolator():
     """Figure 3: Convergence in time for single-parameter estimation
     with different number of Fourier modes or pointwise observations.
 
-    Requires the folders data/interpolator_scan and
-    data/interpolator_scan_critical_range.
+    Requires the folder data/interpolator_scan.
     """
-    sr1 = SimulationResults("data/interpolator_scan")
-    sr2 = SimulationResults("data/interpolator_scan_critical_range")
-    results = [
-        sr2.results[67],
-        sr1.results[9],
-        sr2.results[28],
-        sr2.results[55],
-    ]
+    sr = SimulationResults("data/interpolator_scan")
+    results = [sr.results[i] for i in [22, 25, 9, 18]]
     labels = [
         "Fourier projection, 18 modes",
         "Fourier projection, 21 modes",
@@ -184,14 +181,14 @@ def finitedifference_order():
         logdata = np.log10(pts[order-1:])
         estimated_order = stats.linregress(logdt[order-1:], logdata).slope
         print(order, estimated_order)
-        ax.loglog(dt, pts, ls='-', lw=1, marker=mark, ms=8, mew=0)
+        ax.loglog(dt, pts, ls='-', lw=1, marker=mark, ms=6, mew=0)
 
     # Annotate each line (no legend).
-    ax.text(9.5e-4, 1.5e-4, "first-order FD", color="C0", fontsize="large",
+    ax.text(9.75e-4, 2e-4, "first-order", color="C0", fontsize="x-large",
             ha="right", va="center")
-    ax.text(9.5e-4, 1.1e-8, "second-order FD", color="C1", fontsize="large",
+    ax.text(9.75e-4, 1.5e-8, "second-order", color="C1", fontsize="x-large",
             ha="right", va="center")
-    ax.text(1.1e-3, 6e-12, "third-order FD", color="C2", fontsize="large",
+    ax.text(1.05e-3, 4e-12, "third-order", color="C2", fontsize="x-large",
             ha="left", va="center")
 
     # Set labels and titles.
