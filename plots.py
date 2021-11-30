@@ -117,7 +117,7 @@ def mu_alpha_convergence():
     axes[0].set_xlabel(r"$\alpha$")
     axes[1].set_title(r"Fixed $\alpha = 1$")
     axes[1].set_xlabel(r"$\mu$")
-    axes[0].set_ylabel("Convergence rate")
+    axes[0].set_ylabel(r"Convergence rate $\beta$")
     for ax in axes:
         ax.grid(True, which="major", axis="y", ls='--', lw=.25, color="gray")
 
@@ -147,21 +147,23 @@ def finitedifference_order():
         print(order, estimated_order)
         ax.loglog(dt, pts, ls='-', lw=1, marker=mark, ms=8, mew=0)
 
+    # Annotate each line (no legend).
+    ax.text(9.5e-4, 1.5e-4, "first-order FD", color="C0", fontsize="large",
+            ha="right", va="center")
+    ax.text(9.5e-4, 1.1e-8, "second-order FD", color="C1", fontsize="large",
+            ha="right", va="center")
+    ax.text(1.1e-3, 6e-12, "third-order FD", color="C2", fontsize="large",
+            ha="left", va="center")
+
     # Set labels and titles.
     ax.set_xlabel(r"Time step $\delta t$")
-    ax.set_ylabel(r"$|\lambda - \widehat{\lambda}(t_f)|$")
+    ax.set_ylabel(r"$\displaystyle\int_{t_f-1}^{t_f}"
+                  r"|\lambda-\widehat{\lambda}(t)|\:dt$")
     ax.set_yticks([1e-12, 1e-9, 1e-6, 1e-3])
     ax.set_yticks([1e-11, 1e-10, 1e-8, 1e-7, 1e-5, 1e-4], minor=True)
     ax.set_yticklabels([], minor=True)
     ax.set_ylim(1e-13, 1e-2)
     ax.grid(True, which="major", axis="y", ls='--', lw=.25, color="gray")
-
-    # Legend to the side of the plot.
-    fig.subplots_adjust(right=.825)
-    ax.legend("123",  # ["First order", "Second order", "Third order"],
-              title="FD order", title_fontsize="xx-large",
-              loc="center right", ncol=1,
-              bbox_to_anchor=(1,.5), bbox_transform=fig.transFigure)
 
     fig.savefig("figures/finitediff_order.pdf", dpi=300, bbox_inches="tight")
 
