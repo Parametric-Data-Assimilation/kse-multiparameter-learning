@@ -23,23 +23,12 @@ def init_plt_settings(figsize=(12,3), fontsize="xx-large"):
 
 # Routines for each figure ====================================================
 
-def convergence_singleparam():
-    """Figure 1: Convergence in time for single-parameter estimation
-    with various choices for α.
-
-    Requires the folder data/convergence_singleparam/.
-    """
-    sr = SimulationResults("data/convergence_singleparam")
-
+def _convergence_single(results):
+    """Plot four convergence plots in a 2x2 grid."""
     # Plot results.
     fig, axes = plt.subplots(2, 2, sharex=True, sharey=True, figsize=(12,7))
-    for index, ax in zip([0, 1, 2, 4], axes.flat):
-        result = sr.results[index]
+    for result, ax in zip(results, axes.flat):
         result.plot(ax=ax)
-        if index == 4:
-            ax.set_title("No relaxation")
-        else:
-            ax.set_title(fr"$\alpha = {result.params['alpha']}$")
 
     # Format axes.
     for ax in axes.flat:
@@ -68,8 +57,8 @@ def convergence_singleparam():
     fig.subplots_adjust(bottom=.2, wspace=.05)
     labels = [
         r"$|\lambda - \widehat{\lambda}(t)|$",
-        r"$||I_h(u(\cdot,t)) - I_h(v(\cdot,t))||$",
-        r"$||u(\cdot,t) - v(\cdot,t)||$"
+        r"$||I_h(u(\cdot,t)) - I_h(v(\cdot,t))||_2$",
+        r"$||u(\cdot,t) - v(\cdot,t)||_2$"
     ]
     leg = axes[0,0].legend(labels, loc="lower center", ncol=3,
                            bbox_to_anchor=(.5,0),
@@ -77,16 +66,36 @@ def convergence_singleparam():
     for line in leg.get_lines():
         line.set_linewidth(4)
 
+    return fig, axes
+
+
+def convergence_singleparam():
+    """Figure 1: Convergence in time for single-parameter estimation
+    with various choices for α.
+
+    Requires the folder data/convergence_singleparam/.
+    """
+    sr = SimulationResults("data/convergence_singleparam")
+    indices = [0, 1, 2, 4]
+    results = [sr.results[index] for index in indices]
+
+    fig, axes = _convergence_single(results)
+    for index, ax in zip(indices, axes.flat):
+        if index == 4:
+            ax.set_title("No relaxation")
+        else:
+            ax.set_title(fr"$\alpha = {sr.results[index].params['alpha']}$")
+
     fig.savefig("figures/convergence_singleparam.pdf",
                 dpi=300, bbox_inches="tight")
 
 
-def mu_alpha_convergence():
+def mu_alpha_rates():
     """Figure 2: Convergence rate as functions of α and µ.
 
-    Requires the folder data/mu_alpha_convergence.
+    Requires the folder data/mu_alpha_rates.
     """
-    results = SimulationResults("data/mu_alpha_convergence")
+    results = SimulationResults("data/mu_alpha_rates")
     summary = results.get_summary()
     # For convergence rate wrt α use the default value for µ = 1.8/δt.
     alpha_convergence = summary.iloc[:7]
@@ -122,12 +131,42 @@ def mu_alpha_convergence():
         ax.grid(True, which="major", axis="y", ls='--', lw=.25, color="gray")
 
     fig.subplots_adjust(wspace=.05)
-    fig.savefig("figures/mu_alpha_convergence.pdf",
+    fig.savefig("figures/mu_alpha_rates.pdf",
+                dpi=300, bbox_inches="tight")
+
+
+def convergence_interpolator():
+    """Figure 3: Convergence in time for single-parameter estimation
+    with different number of Fourier modes or pointwise observations.
+
+    Requires the folders data/interpolator_scan and
+    data/interpolator_scan_critical_range.
+    """
+    sr1 = SimulationResults("data/interpolator_scan")
+    sr2 = SimulationResults("data/interpolator_scan_critical_range")
+    results = [
+        sr2.results[67],
+        sr1.results[9],
+        sr2.results[28],
+        sr2.results[55],
+    ]
+    labels = [
+        "Fourier projection, 18 modes",
+        "Fourier projection, 21 modes",
+        "Cubic interpolation, 40 points",
+        "Cubic interpolation, 46 points",
+    ]
+
+    fig, axes = _convergence_single(results)
+    for label, ax in zip(labels, axes.flat):
+        ax.set_title(label)
+
+    fig.savefig("figures/convergence_interpolator.pdf",
                 dpi=300, bbox_inches="tight")
 
 
 def finitedifference_order():
-    """Figure 3: Convergence against time step for various FD schemes.
+    """Figure 4: Convergence against time step for various FD schemes.
 
     Requires the folder data/finitedifference_order/.
     """
@@ -168,73 +207,7 @@ def finitedifference_order():
     fig.savefig("figures/finitediff_order.pdf", dpi=300, bbox_inches="tight")
 
 
-def convergence_interpolator():
-    """Figure 4: Convergence in time for single-parameter estimation
-    with different number of Fourier modes or pointwise observations.
-
-    Requires the folders data/interpolator_scan and
-    data/interpolator_scan_critical_range.
-    """
-    sr1 = SimulationResults("data/interpolator_scan")
-    sr2 = SimulationResults("data/interpolator_scan_critical_range")
-
-    # Plot results.
-    fig, axes = plt.subplots(2, 2, sharex=True, sharey=True, figsize=(12,7))
-
-    sr2.results[67].plot(ax=axes[0,0])
-    axes[0,0].set_title("Fourier projection, 18 modes")
-
-    sr1.results[9].plot(ax=axes[0,1])
-    axes[0,1].set_title("Fourier projection, 21 modes")
-
-    sr2.results[28].plot(ax=axes[1,0])
-    axes[1,0].set_title("Cubic interpolation, 40 points")
-
-    sr2.results[55].plot(ax=axes[1,1])
-    axes[1,1].set_title("Cubic interpolation, 46 points")
-
-    # Format axes.
-    for ax in axes.flat:
-        ax.set_yticks([1e-13, 1e-9, 1e-5, 1e-1])
-        ax.set_yticks([1e-14,
-                       1e-12, 1e-11, 1e-10,
-                       1e-8, 1e-7, 1e-6,
-                       1e-4, 1e-3, 1e-2,
-                       1e0, 1e1],
-                      minor=True)
-        ax.set_yticklabels([], minor=True)
-        ax.grid(True, which="major", axis="y", ls='--', lw=.25, color="gray")
-        ax.set_ylim([1e-15, 1e2])
-        ax.set_xlim(right=50)
-    for ax in axes[-1,:]:
-        ax.set_xlabel(r"Time $t$")
-    for ax in axes[:,0]:
-        ax.set_ylabel("Absolute error")
-
-    for ax in axes.flat:
-        for line, i in zip(ax.lines, [1, 6, 9]):
-            line.set_color(f"C{i-1:d}")
-            line.set_linewidth(1)
-            line.set_linestyle(_STYLES[i-1])
-
-    # Legend below the plots.
-    fig.subplots_adjust(bottom=.2, wspace=.05)
-    labels = [
-        r"$|\lambda - \widehat{\lambda}(t)|$",
-        r"$||I_h(u(\cdot,t)) - I_h(v(\cdot,t))||$",
-        r"$||u(\cdot,t) - v(\cdot,t)||$"
-    ]
-    leg = axes[0,0].legend(labels, loc="lower center", ncol=3,
-                           bbox_to_anchor=(.5,0),
-                           bbox_transform=fig.transFigure)
-    for line in leg.get_lines():
-        line.set_linewidth(4)
-
-    fig.savefig("figures/convergence_interpolator.pdf",
-                dpi=300, bbox_inches="tight")
-
-
-def _configure_convergence_plot(ax, indices, xmax=50, legend=True):
+def _convergence_multi(ax, indices, xmax=50, legend=True):
     """Common settings for convergence Figures."""
     ax.set_xlabel(r"Time $t$")
     ax.set_xlim(right=xmax)
@@ -276,9 +249,9 @@ def _configure_convergence_plot(ax, indices, xmax=50, legend=True):
 def _texlabel(lbl):
     """Convert a label to the corresponding TeX equation."""
     if lbl.startswith("true"):
-        return r"$||u(\cdot,t) - v(\cdot,t)||$"
+        return r"$||u(\cdot,t) - v(\cdot,t)||_2$"
     elif lbl.startswith("interp"):
-        return r"$||I_h(u(\cdot,t)) - I_h(v(\cdot,t))||$"
+        return r"$||I_h(u(\cdot,t)) - I_h(v(\cdot,t))||_2$"
     else:
         if not lbl.startswith("lambda"):
             raise ValueError(f"Unrecognized label '{lbl}'")
@@ -295,9 +268,9 @@ def convergence_multiparam():
     fig, [ax1, ax2] = plt.subplots(1, 2, figsize=(12,4.5), sharey=True)
 
     ax1 = sr.results[0].plot(ax1, params_only=True)
-    _configure_convergence_plot(ax1, [1,2,3,4], legend=False)
+    _convergence_multi(ax1, [1,2,3,4], legend=False)
     ax2 = sr.results[1].plot(ax2, params_only=True)
-    _configure_convergence_plot(ax2, [2,4,5], legend=False)
+    _convergence_multi(ax2, [2,4,5], legend=False)
     ax2.set_ylabel("")
     fig.subplots_adjust(bottom=.4, wspace=.05)
 
@@ -320,7 +293,7 @@ def convergence_nonlinearparam():
     sr = SimulationResults("data/convergence_multiparam")
 
     ax = sr.results[2].plot(figsize=(12,3), params_only=False)
-    _configure_convergence_plot(ax, [5])
+    _convergence_multi(ax, [5])
 
     plt.savefig("figures/convergence_nonlinearparam.pdf",
                 dpi=300, bbox_inches="tight")
@@ -332,9 +305,9 @@ def main():
     """Create all plots."""
     init_plt_settings()
     convergence_singleparam()
-    mu_alpha_convergence()
-    finitedifference_order()
+    mu_alpha_rates()
     convergence_interpolator()
+    finitedifference_order()
     convergence_multiparam()
     convergence_nonlinearparam()
 
