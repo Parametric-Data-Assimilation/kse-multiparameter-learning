@@ -1,10 +1,9 @@
 # KS_parameter_estimation.py
 """Parameter estimation for the Kuramoto Sivashinsky equation.
 
-Author Benjamin Pachev <benjaminpachev@gmail.com> 2020
+Author: Benjamin Pachev <benjaminpachev@gmail.com> 2020.
 """
 
-import json
 import numpy as np
 from functools import partial
 import matplotlib.pyplot as plt
@@ -16,6 +15,7 @@ def fourier_projector(spec, modes=21):
     mod_spec = spec.copy()
     mod_spec[modes:] = 0
     return np.fft.irfft(mod_spec)
+
 
 def l2_norm(x):
     """Compute the l2 norm, ||x|| = sqrt(sum_{i}(x_i^2))"""
@@ -43,19 +43,22 @@ def do_experiment(initial_guess, dt=.01, max_t=10, make_plots=False,
         If true, plot results sequentially.
     """
     true = KS(dt=dt, N=N, timestepper=timestepper, **true_params)
-    #The **initial_guess passes all initial guess parameters to the data assimilator
+    # The **initial_guess passes all initial guess parameters
+    # to the data assimilator.
     estimate_params = list(initial_guess.keys())
     projector = partial(fourier_projector, modes=modes)
-    assimilator = KSAssim(projector, timestepper=timestepper,
-        dt=dt, estimate_params=estimate_params, N=N, **initial_guess, **kwargs)
+    assimilator = KSAssim(projector, timestepper=timestepper, dt=dt,
+                          estimate_params=estimate_params, N=N,
+                          **initial_guess, **kwargs)
 
-    for i in range(int(warmup_time/dt)): true.advance()
+    for i in range(int(warmup_time/dt)):
+        true.advance()
     print("Warmed up")
-    max_n = int(max_t/dt) #10 second similation
+    max_n = int(max_t/dt)  # 10 second similation.
     interp_errors = []
     true_errors = []
-    param_errors = {p : [] for p in estimate_params}
-    # norms of the true and estimated solution
+    param_errors = {p: [] for p in estimate_params}
+    # Norms of the true and estimated solution.
     true_norms = []
     estimate_norms = []
     for n in range(max_n):
@@ -67,7 +70,9 @@ def do_experiment(initial_guess, dt=.01, max_t=10, make_plots=False,
         estimate_norms.append(l2_norm(assimilator.xspec))
 
         for p in param_errors:
-            param_errors[p].append(np.abs(getattr(assimilator, p)-getattr(true,p)))
+            param_errors[p].append(
+                np.abs(getattr(assimilator, p) - getattr(true,p))
+            )
         assimilator.set_target(target)
         assimilator.advance()
         true.advance()
@@ -91,5 +96,5 @@ def do_experiment(initial_guess, dt=.01, max_t=10, make_plots=False,
 
 # =============================================================================
 if __name__ == "__main__":
-    do_experiment({"lambda2":2,"lambda4":2}, alpha=1, dt=.001, max_t=40, mu=20, order=1, make_plots=True)
-
+    do_experiment({"lambda2":2, "lambda4":2},
+                  alpha=1, dt=.001, max_t=40, mu=20, order=1, make_plots=True)

@@ -16,13 +16,13 @@ class Result:
         # Verify arrays are consistent lengths.
         expected_len = None
         for k in self.arrays:
-            l = len(self.arrays[k])
+            ln = len(self.arrays[k])
             if expected_len is None:
-                expected_len = l
+                expected_len = ln
                 continue
-            if l != expected_len:
-                raise RuntimeWarning(f"Inconsistent length {l} for metric {k}!"
-                                     f" Expected {expected_len}")
+            if ln != expected_len:
+                raise RuntimeWarning(f"Inconsistent length {ln} for"
+                                     f"metric {k}! Expected {expected_len}")
 
         self.num_timesteps = expected_len
 
@@ -35,19 +35,19 @@ class Result:
         return res
 
     def determine_convergence_rate(self):
-        """Get the convergence rate 
-        """
-
+        """Estimate the convergence rate."""
         true_errs = self.arrays["true_errors"]
         steps_per_second = int(1./self.params["dt"])
         final_err = self.final_errors()["true_errors"]
         convergence_mask = true_errs < final_err
         try:
             steps_to_convergence = np.where(convergence_mask)[0][0]
-        except IndexError: return np.nan
+        except IndexError:
+            return np.nan
         seconds_to_convergence = steps_to_convergence/steps_per_second
         initial_err = true_errs[0]
-        exp_decay_rate = (np.log(final_err) - np.log(initial_err)) / seconds_to_convergence
+        exp_decay_rate = (np.log(final_err) - np.log(initial_err))
+        exp_decay_rate /= seconds_to_convergence
         return -exp_decay_rate
 
     def plot(self, ax=None, save_file=None, params_only=False, **kwargs):
@@ -68,7 +68,8 @@ class Result:
 
         domain = self.params['dt'] * np.arange(self.num_timesteps)
         for k in self.arrays:
-            if params_only and "lambda" not in k: continue
+            if params_only and "lambda" not in k:
+                continue
             ax.semilogy(domain, self.arrays[k], lw=1, label=k)
 
         ax.set_xlim(domain[0], domain[-1])
@@ -117,7 +118,7 @@ class SimulationResults():
 
     def get_result(self, search_params):
         for r in self.results:
-            if all(r.params[k]==v for k,v in search_params.items()):
+            if all(r.params[k] == v for k,v in search_params.items()):
                 print("Found matching result", r.params)
                 return r
 
