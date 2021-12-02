@@ -57,7 +57,7 @@ def high_spatial_res(dirname):
 @option
 def explore_alpha(dirname):
     sim = BatchSimulator(dirname, N=512, lambda2=1, overwrite=True)
-    base_params = {"alpha": 1, "mu_scale": 1.8, "order":3 , "max_t": 45, "dt": 1e-3, "modes": 21, "timestepper":"rk4"}
+    base_params = {"alpha": 1, "mu_scale": 1.8, "order":3 , "max_t": 60, "dt": 1e-3, "modes": 21, "timestepper":"rk4"}
     sim.run_batch(base_params, ranges={ "initial_guess": [{"lambda2": 2}, {"lambda2": 2, "lambda4":2, "nonlinear_coeff":2}], "alpha": [.5, 1, 10, 100, None]})
 
 @option
@@ -102,11 +102,10 @@ def interpolator_scan(dirname):
         "timestepper":"rk4", "initial_guess": {"lambda2": 2}}
 
     pointwise_modes = list(range(34,48,2))
-    fourier_modes = list(range(17,20))
-    mu_scales = [1e-3, 1e-2, 1e-1]
+    fourier_modes = list(range(17,22))
     pointwise_params = sim.get_param_list(base_params, ranges={"modes":pointwise_modes, "pointwise_interpolation": 
-        ["cubic", "quadratic", "linear"], "mu_scale": mu_scales})
-    fourier_params = sim.get_param_list(base_params, ranges={"modes":fourier_modes, "mu_scale":mu_scales})
+        ["cubic", "quadratic", "linear"], "mu_scale": [.01]})
+    fourier_params = sim.get_param_list(base_params, ranges={"modes":fourier_modes, "mu_scale":[1.8]})
     #sim.run_batch(base_params, ranges={"modes": modes, "pointwise_interpolation": interpolators})
     sim.run_simulations_low(pointwise_params+fourier_params)
 
